@@ -68,7 +68,7 @@ interface ForensicSummary {
   high_similarity_sentence_count: number;
   high_ai_sentence_count: number;
   citation_excluded_count: number;
-  detection_method_breakdown: { exact: number; semantic: number; shingle: number };
+  detection_method_breakdown: { exact: number; semantic: number; shingle: number; embedding?: number };
   overall_risk_explanation: string;
 }
 
@@ -344,6 +344,37 @@ function SentenceLegend() {
 
 function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
   const [active, setActive] = useState<number | null>(null);
+  const [humanizedText, setHumanizedText] = useState<string | null>(null);
+  const [humanizing, setHumanizing] = useState(false);
+
+  const handleHumanize = async (text: string) => {
+    setHumanizing(true);
+    setHumanizedText(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/humanize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (res.ok) setHumanizedText(data.humanized);
+      else setHumanizedText("Failed to humanize text.");
+    } catch {
+      setHumanizedText("Failed to connect to humanizer.");
+    } finally {
+      setHumanizing(false);
+    }
+  };
+
+  const handleSpanClick = (i: number) => {
+    if (active === i) {
+      setActive(null);
+      setHumanizedText(null);
+    } else {
+      setActive(i);
+      setHumanizedText(null);
+    }
+  };
 
   return (
     <div className="highlight-prose">
@@ -351,12 +382,12 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
         <span
           key={i}
           className={`sent-span ${sentenceClass(s)}`}
-          onClick={() => setActive(active === i ? null : i)}
+          onClick={() => handleSpanClick(i)}
           title={`Similarity: ${pct(s.similarity_score)} | AI: ${pct(s.ai_probability)}`}
         >
           {s.text}{" "}
           {active === i && (
-            <span className="sent-popup">
+            <span className="sent-popup" onClick={(e) => e.stopPropagation()}>
               <strong>Similarity:</strong> {pct(s.similarity_score)}<br />
               <strong>AI:</strong> {pct(s.ai_probability)}<br />
               <strong>Confidence:</strong> {pct(s.confidence_interval[0])}–{pct(s.confidence_interval[1])}<br />
@@ -366,6 +397,21 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
                   📄 <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> ({src.match_percentage.toFixed(1)}%)
                 </span>
               ))}
+              
+              {s.ai_probability > 0.4 && (
+                <div className="humanize-section">
+                  <hr style={{ borderColor: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
+                  <button onClick={(e) => { e.stopPropagation(); handleHumanize(s.text); }} disabled={humanizing} className="btn-humanize">
+                    {humanizing ? "✨ Rewriting..." : "✨ Make AI-Free"}
+                  </button>
+                  {humanizedText && (
+                    <div className="humanized-result">
+                      <strong>Suggestion:</strong>
+                      <p>{humanizedText}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </span>
           )}
         </span>

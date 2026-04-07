@@ -2,26 +2,54 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface2: #273044;
-  --border: #334155;
-  --text: #f1f5f9;
-  --muted: #94a3b8;
+  --bg: #0b0f19;
+  --surface: rgba(30, 41, 59, 0.45);
+  --surface2: rgba(39, 48, 68, 0.55);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #ffffff;
+  --muted: #a1a1aa;
   --accent: #6366f1;
   --accent-hover: #818cf8;
-  --green: #22c55e;
-  --amber: #f59e0b;
-  --red: #ef4444;
-  --font: "Inter", "Segoe UI", system-ui, sans-serif;
-  --radius: 10px;
-  --sidebar-w: 260px;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --font: "Outfit", "Inter", system-ui, sans-serif;
+  --radius: 12px;
+  --sidebar-w: 280px;
 }
 
-html, body, #root { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); }
+html, body, #root { 
+  height: 100%; 
+  font-family: var(--font); 
+  background: radial-gradient(circle at 10% 20%, #171131, #0b0f19 60%, #030712);
+  color: var(--text); 
+}
 
-a { color: var(--accent-hover); text-decoration: none; }
-a:hover { text-decoration: underline; }
+/* Base glowing blob effect in background */
+body::before {
+  content: "";
+  position: absolute;
+  top: -150px; left: -150px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::after {
+  content: "";
+  position: absolute;
+  bottom: -200px; right: -100px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+a { color: var(--accent-hover); text-decoration: none; transition: filter 0.2s; }
+a:hover { filter: brightness(1.2); }
 
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .app-root {
@@ -34,6 +62,8 @@ a:hover { text-decoration: underline; }
 .sidebar {
   width: var(--sidebar-w);
   background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -154,9 +184,12 @@ a:hover { text-decoration: underline; }
 /* ── Cards ─────────────────────────────────────────────────────────────────── */
 .card {
   background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 22px 24px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 .card h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; }
 .card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; }
@@ -168,15 +201,20 @@ a:hover { text-decoration: underline; }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 2px dashed var(--border);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
   border-radius: var(--radius);
   padding: 32px 16px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, transform 0.2s;
   position: relative;
   text-align: center;
+  background: rgba(0, 0, 0, 0.2);
 }
-.drop-zone:hover, .drop-zone-active { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+.drop-zone:hover, .drop-zone-active { 
+  border-color: var(--accent); 
+  background: rgba(99,102,241,0.1); 
+  transform: translateY(-2px);
+}
 .drop-zone-filled { border-color: var(--green); background: rgba(34,197,94,0.04); }
 .drop-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .drop-icon { font-size: 2rem; }
@@ -428,14 +466,16 @@ a:hover { text-decoration: underline; }
 .sent-ai         { background: rgba(245,158,11,0.22); border-bottom: 2px solid #f59e0b; }
 .sent-both       { background: rgba(168,85,247,0.22); border-bottom: 2px solid #a855f7; }
 .sent-citation   { color: var(--muted); font-style: italic; }
-.sent-clean      { }
+.sent-clean      { transition: all 0.1s; }
 
 .sent-popup {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   z-index: 100;
-  background: var(--surface2);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
@@ -443,7 +483,7 @@ a:hover { text-decoration: underline; }
   line-height: 1.7;
   min-width: 220px;
   max-width: 320px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   color: var(--text);
   cursor: default;
 }
@@ -452,6 +492,49 @@ a:hover { text-decoration: underline; }
   margin-top: 4px;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.humanize-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-humanize {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-humanize:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  filter: brightness(1.1);
+}
+
+.btn-humanize:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.humanized-result {
+  background: rgba(16, 185, 129, 0.1);
+  border-left: 3px solid #10b981;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #d1fae5;
+  margin-top: 4px;
+}
+.humanized-result p {
+  margin-top: 4px;
 }
 
 /* ── Side-by-side ──────────────────────────────────────────────────────────── */
@@ -561,7 +644,7 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* ── Forensic Panel ────────────────────────────────────────────────────────── */
-.forensic-card { }
+/* Forensic card container overrides if needed */
 
 .forensic-explanation {
   font-size: 0.84rem;
@@ -639,7 +722,7 @@ a:hover { text-decoration: underline; }
 .docx-row strong { color: var(--text); font-weight: 600; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Paragraph Heatmap ─────────────────────────────────────────────────────── */
-.para-card { }
+/* Paragraph card container overrides if needed */
 
 .para-grid {
   display: flex;

@@ -284,6 +284,31 @@ app.get("/v1/lti/jwks", (req, res) => {
   res.json({ keys: [] }); // Stub for public keys if deep-linking or grade passback is needed
 });
 
+// ─── Humanizer ────────────────────────────────────────────────────────────────
+app.post("/v1/humanize", async (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: "Text is required" });
+
+  // Basic mock humanization function
+  // Replace formal wording with more casual or varied synonyms typically found in human text
+  let humanized = String(text)
+    .replace(/\b(Furthermore|Additionally|Moreover)\b/g, "Plus")
+    .replace(/\b(Therefore|Thus|Hence)\b/g, "So")
+    .replace(/\b(utilize|utilizing)\b/g, "use")
+    .replace(/\b(In conclusion|To summarize)\b/g, "Ultimately")
+    .replace(/\b(delve into)\b/g, "explore")
+    .replace(/\b(crucial|vital|imperative)\b/g, "important")
+    .replace(/\b(facilitate)\b/g, "help")
+    .replace(/\b(A myriad of)\b/g, "Many")
+    .replace(/\b(It is important to note that)\b/g, "Keep in mind that");
+
+  if (humanized.endsWith(".")) humanized += " "; // minor stylistic perturbation
+  
+  // Fake brief delay
+  await new Promise((r) => setTimeout(r, 600));
+
+  res.json({ original: text, humanized });
+});
 
 // ─── Submissions ──────────────────────────────────────────────────────────────
 
