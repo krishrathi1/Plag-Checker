@@ -550,7 +550,53 @@ function EmptyStatePanel({
   );
 }
 
-// â”€â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function TableHumanizeAction({ text }: { text: string }) {
+  const [humanizedText, setHumanizedText] = useState<string | null>(null);
+  const [humanizing, setHumanizing] = useState(false);
+  const [humanizeError, setHumanizeError] = useState<string | null>(null);
+
+  const handleHumanize = async () => {
+    setHumanizing(true);
+    setHumanizeError(null);
+    setHumanizedText(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/writing-assist/humanize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const payload = (await res.json()) as { rewritten?: string; error?: any };
+      if (!res.ok || !payload.rewritten) {
+        let errStr = "Unable to humanize text.";
+        if (typeof payload.error === "string") errStr = payload.error;
+        else if (payload.error) errStr = JSON.stringify(payload.error);
+        setHumanizeError(errStr);
+        return;
+      }
+      setHumanizedText(payload.rewritten);
+    } catch {
+      setHumanizeError("Unable to humanize text right now.");
+    } finally {
+      setHumanizing(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 120 }}>
+      <button className="sent-humanize-btn" onClick={handleHumanize} disabled={humanizing}>
+        {humanizing ? "Humanizing..." : "Humanize"}
+      </button>
+      {humanizeError && <div className="sent-humanize-error" style={{ fontSize: "0.75rem", whiteSpace: "normal" }}>{humanizeError}</div>}
+      {humanizedText && (
+        <div style={{ fontSize: "0.8rem", background: "#eef2ff", padding: 6, borderRadius: 4, whiteSpace: "normal", color: "#1e3a8a", border: "1px solid #c7d2fe" }}>
+          <strong>Output:</strong> {humanizedText}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
   // Auth
@@ -1032,6 +1078,7 @@ export default function App() {
                         <th>Method</th>
                         <th>Citation</th>
                         {viewRole !== "student" && <th>Top Source</th>}
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1061,6 +1108,15 @@ export default function App() {
                               ) : "-"}
                             </td>
                           )}
+                          <td>
+                            {!s.is_citation && (s.similarity_score > 0.1 || s.ai_probability > 0.1) ? (
+                              <TableHumanizeAction text={s.text} />
+                            ) : s.is_citation ? (
+                              <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>Citation</span>
+                            ) : (
+                              <span style={{ fontSize: "0.8rem", color: "#10b981" }}>Low Risk</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
