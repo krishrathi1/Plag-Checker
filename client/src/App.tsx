@@ -565,6 +565,10 @@ export default function App() {
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [humanizeInput, setHumanizeInput] = useState("");
+  const [humanizeOutput, setHumanizeOutput] = useState("");
+  const [humanizeLoading, setHumanizeLoading] = useState(false);
+  const [humanizeError, setHumanizeError] = useState("");
 
   // Report
   const [report, setReport] = useState<Report | null>(null);
@@ -680,6 +684,34 @@ export default function App() {
       setMessage((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleHumanizeStandalone(e: React.FormEvent) {
+    e.preventDefault();
+    if (!humanizeInput.trim()) {
+      setHumanizeError("Please enter text to humanize.");
+      return;
+    }
+    setHumanizeLoading(true);
+    setHumanizeError("");
+    setHumanizeOutput("");
+    try {
+      const res = await fetch(`${API_BASE}/v1/writing-assist/humanize`, {
+        method: "POST",
+        headers: { ...makeHeaders(effectiveKey), "Content-Type": "application/json" },
+        body: JSON.stringify({ text: humanizeInput }),
+      });
+      const payload = (await res.json()) as { rewritten?: string; error?: string };
+      if (!res.ok || !payload.rewritten) {
+        setHumanizeError(payload.error ?? "Unable to humanize text.");
+        return;
+      }
+      setHumanizeOutput(payload.rewritten);
+    } catch {
+      setHumanizeError("Unable to humanize text right now.");
+    } finally {
+      setHumanizeLoading(false);
     }
   }
 
@@ -845,6 +877,32 @@ export default function App() {
             <div className="status-bar">
               <span className={`status-badge status-${statusTone[status]}`}>{status.toUpperCase()}</span>
               {status === "processing" && <span className="spinner" />}
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h2>Writing Assist</h2>
+          <form onSubmit={handleHumanizeStandalone}>
+            <label className="form-field">
+              Humanize / simplify text
+              <textarea
+                className="sidebar-input"
+                style={{ minHeight: 90, resize: "vertical" }}
+                value={humanizeInput}
+                onChange={(e) => setHumanizeInput(e.target.value)}
+                placeholder="Paste a sentence or paragraph..."
+              />
+            </label>
+            <button className="btn-primary" type="submit" disabled={humanizeLoading}>
+              {humanizeLoading ? "Humanizing..." : "Humanize Text"}
+            </button>
+          </form>
+          {humanizeError && <p className="sidebar-error" style={{ marginTop: 10 }}>{humanizeError}</p>}
+          {humanizeOutput && (
+            <div className="forensic-coaching" style={{ marginTop: 12 }}>
+              <p className="forensic-block-title">Humanized Output</p>
+              <p className="forensic-coaching-summary">{humanizeOutput}</p>
             </div>
           )}
         </section>
