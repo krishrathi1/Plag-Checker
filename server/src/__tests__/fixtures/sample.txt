@@ -1,0 +1,2 @@
+This is a sample student submission used for integration testing.
+It should pass upload validation and queue correctly.
