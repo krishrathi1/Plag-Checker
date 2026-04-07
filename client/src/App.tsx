@@ -220,7 +220,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
 
   return (
     <section className="card forensic-card">
-      <h3>ðŸ”¬ Forensic Analysis</h3>
+      <h3>Forensic Analysis</h3>
 
       {/* Risk explanation */}
       <div className="forensic-explanation">{overall_risk_explanation}</div>
@@ -275,7 +275,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
       {/* Obfuscation flags */}
       {obfuscation_flags.length > 0 && (
         <div className="obf-section">
-          <p className="forensic-block-title">âš  Obfuscation Detected</p>
+          <p className="forensic-block-title">Obfuscation Detected</p>
           {obfuscation_flags.map((f, i) => (
             <div key={i} className="flag-row" style={{ borderLeftColor: SEV_COLOR[f.severity] }}>
               <span className="flag-sev" style={{ color: SEV_COLOR[f.severity] }}>{f.severity}</span>
@@ -288,7 +288,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
       {/* DOCX metadata */}
       {docx_meta && (
         <div className="docx-meta-section">
-          <p className="forensic-block-title">ðŸ“„ Document Metadata (DOCX)</p>
+          <p className="forensic-block-title">Document Metadata (DOCX)</p>
           <div className="docx-meta-grid">
             {docx_meta.author && <div className="docx-row"><span>Author</span><strong>{docx_meta.author}</strong></div>}
             {docx_meta.lastModifiedBy && docx_meta.lastModifiedBy !== docx_meta.author && (
@@ -424,7 +424,7 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
               {s.is_citation && <em>Excluded as citation</em>}
               {s.sources.slice(0, 2).map((src) => (
                 <span key={src.url} className="sent-src">
-                  📄 <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> ({src.match_percentage.toFixed(1)}%)
+                  SRC <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> ({src.match_percentage.toFixed(1)}%)
                 </span>
               ))}
               {!s.is_citation && (
@@ -502,6 +502,48 @@ function SideBySideView({ sentences, sources }: { sentences: SentenceReport[]; s
         </div>
       </div>
     </div>
+  );
+}
+
+function EmptyStatePanel({
+  stats,
+  orgConfig,
+}: {
+  stats: OrgStats | null;
+  orgConfig: OrgConfig | null;
+}) {
+  return (
+    <section className="card empty-state-card">
+      <h3>Dashboard Overview</h3>
+      <p className="muted">
+        Upload a document to generate a full integrity report with source matching, AI probability,
+        sentence highlights, and writing guidance.
+      </p>
+      <div className="empty-state-grid">
+        <div className="empty-kpi">
+          <span className="empty-kpi-label">Total Submissions</span>
+          <strong>{stats?.total_submissions ?? 0}</strong>
+        </div>
+        <div className="empty-kpi">
+          <span className="empty-kpi-label">Completed</span>
+          <strong>{stats?.complete ?? 0}</strong>
+        </div>
+        <div className="empty-kpi">
+          <span className="empty-kpi-label">Avg Similarity</span>
+          <strong>{stats ? pct(stats.avg_similarity_score) : "0.0%"}</strong>
+        </div>
+        <div className="empty-kpi">
+          <span className="empty-kpi-label">Avg AI Probability</span>
+          <strong>{stats ? pct(stats.avg_ai_probability) : "0.0%"}</strong>
+        </div>
+      </div>
+      {orgConfig && (
+        <div className="empty-notes">
+          <span>Allowed file types: {orgConfig.allowed_file_types.join(", ")}</span>
+          <span>Student quota: {orgConfig.student_self_check_quota}</span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -657,11 +699,11 @@ export default function App() {
     [report],
   );
 
-  const statusEmoji: Record<JobStatus, string> = {
-    queued: "â³",
-    processing: "âš™ï¸",
-    complete: "âœ…",
-    failed: "âŒ",
+  const statusTone: Record<JobStatus, "neutral" | "warn" | "success" | "danger"> = {
+    queued: "neutral",
+    processing: "warn",
+    complete: "success",
+    failed: "danger",
   };
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -671,7 +713,7 @@ export default function App() {
       {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <span className="brand-icon">ðŸ”</span>
+          <span className="brand-icon">VC</span>
           <span className="brand-name">VeriCheck<em>AI</em></span>
         </div>
 
@@ -763,15 +805,15 @@ export default function App() {
             >
               {file ? (
                 <>
-                  <span className="drop-icon">ðŸ“„</span>
+                    <span className="drop-icon">FILE</span>
                   <span className="drop-filename">{file.name}</span>
                   <span className="drop-hint">Click or drop to replace</span>
                 </>
               ) : (
                 <>
-                  <span className="drop-icon">ðŸ“‚</span>
+                  <span className="drop-icon">UPLOAD</span>
                   <span className="drop-hint">Drop a file here or click to browse</span>
-                  <span className="drop-types">PDF Â· DOCX Â· PPTX Â· TXT Â· TEX Â· MD Â· code files</span>
+                  <span className="drop-types">PDF | DOCX | PPTX | TXT | TEX | MD | code files</span>
                 </>
               )}
               <input
@@ -794,19 +836,20 @@ export default function App() {
             </div>
 
             <button className="btn-primary" type="submit" disabled={loading || !file}>
-              {loading ? "Submittingâ€¦" : "Submit for Scan"}
+              {loading ? "Submitting..." : "Submit for Scan"}
             </button>
           </form>
 
           {message && <p className="info-msg">{message}</p>}
           {status && (
             <div className="status-bar">
-              <span className="status-emoji">{statusEmoji[status]}</span>
-              <span className="status-text">{status.toUpperCase()}</span>
+              <span className={`status-badge status-${statusTone[status]}`}>{status.toUpperCase()}</span>
               {status === "processing" && <span className="spinner" />}
             </div>
           )}
         </section>
+
+        {!report && <EmptyStatePanel stats={stats} orgConfig={orgConfig} />}
 
         {/* Report */}
         {report && (
@@ -822,11 +865,11 @@ export default function App() {
                   )}
                 </h2>
                 <div className="score-meta">
-                  {report.metadata.word_count.toLocaleString()} words Â·{" "}
-                  lang: <strong>{report.metadata.language}</strong> Â·{" "}
-                  processed in <strong>{report.metadata.processing_time_ms}ms</strong> Â·{" "}
+                  {report.metadata.word_count.toLocaleString()} words |{" "}
+                  lang: <strong>{report.metadata.language}</strong> |{" "}
+                  processed in <strong>{report.metadata.processing_time_ms}ms</strong> |{" "}
                   {report.metadata.citations_excluded > 0 && (
-                    <span>{report.metadata.citations_excluded} citation(s) excluded Â· </span>
+                    <span>{report.metadata.citations_excluded} citation(s) excluded | </span>
                   )}
                   {report.metadata.is_code_file && <span className="code-badge">CODE FILE</span>}
                 </div>
@@ -870,14 +913,14 @@ export default function App() {
                       <tr key={h.job_id} className={h.job_id === report.job_id ? "history-active" : ""}>
                         <td>v{h.scan_version}</td>
                         <td>{new Date(h.created_at).toLocaleDateString()}</td>
-                        <td>{h.similarity_score != null ? pct(h.similarity_score) : "â€”"}</td>
-                        <td>{h.ai_probability != null ? pct(h.ai_probability) : "â€”"}</td>
+                        <td>{h.similarity_score != null ? pct(h.similarity_score) : "-"}</td>
+                        <td>{h.ai_probability != null ? pct(h.ai_probability) : "-"}</td>
                         <td>
                           {h.risk_band ? (
                             <span style={{ color: RISK_COLOR[h.risk_band] }}>{h.risk_band}</span>
-                          ) : "â€”"}
+                          ) : "-"}
                         </td>
-                        <td><code>{h.job_id.slice(0, 8)}â€¦</code></td>
+                        <td><code>{h.job_id.slice(0, 8)}...</code></td>
                       </tr>
                     ))}
                   </tbody>
@@ -935,23 +978,23 @@ export default function App() {
                           <td>{pct(s.similarity_score)}</td>
                           <td>{pct(s.ai_probability)}</td>
                           <td>
-                            {pct(s.confidence_interval[0])}â€“{pct(s.confidence_interval[1])}
+                            {pct(s.confidence_interval[0])}-{pct(s.confidence_interval[1])}
                           </td>
                           <td>
                             {s.detection_method && s.detection_method !== "none" ? (
                               <span className={`method-chip method-chip-${s.detection_method}`}>
                                 {s.detection_method}
                               </span>
-                            ) : "â€”"}
+                            ) : "-"}
                           </td>
-                          <td>{s.is_citation ? "âœ“" : ""}</td>
+                          <td>{s.is_citation ? "Yes" : ""}</td>
                           {viewRole !== "student" && (
                             <td>
                               {s.sources[0] ? (
                                 <a href={s.sources[0].url} target="_blank" rel="noreferrer">
                                   {s.sources[0].title}
                                 </a>
-                              ) : "â€”"}
+                              ) : "-"}
                             </td>
                           )}
                         </tr>
@@ -979,7 +1022,7 @@ export default function App() {
                         />
                       </div>
                       <div className="source-card-meta">
-                        {src.match_percentage.toFixed(2)}% match Â· {src.access_date}
+                        {src.match_percentage.toFixed(2)}% match | {src.access_date}
                       </div>
                     </div>
                   ))}
