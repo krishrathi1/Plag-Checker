@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 // â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -393,9 +393,12 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      const payload = (await res.json()) as { rewritten?: string; error?: string };
+      const payload = (await res.json()) as { rewritten?: string; error?: any };
       if (!res.ok || !payload.rewritten) {
-        setHumanizeError(payload.error ?? "Unable to humanize this sentence right now.");
+        let errStr = "Unable to humanize this sentence right now.";
+        if (typeof payload.error === "string") errStr = payload.error;
+        else if (payload.error) errStr = JSON.stringify(payload.error);
+        setHumanizeError(errStr);
         return;
       }
       setHumanizedText(payload.rewritten);
@@ -702,9 +705,12 @@ export default function App() {
         headers: { ...makeHeaders(effectiveKey), "Content-Type": "application/json" },
         body: JSON.stringify({ text: humanizeInput }),
       });
-      const payload = (await res.json()) as { rewritten?: string; error?: string };
+      const payload = (await res.json()) as { rewritten?: string; error?: any };
       if (!res.ok || !payload.rewritten) {
-        setHumanizeError(payload.error ?? "Unable to humanize text.");
+        let errStr = "Unable to humanize text.";
+        if (typeof payload.error === "string") errStr = payload.error;
+        else if (payload.error) errStr = JSON.stringify(payload.error);
+        setHumanizeError(errStr);
         return;
       }
       setHumanizeOutput(payload.rewritten);
