@@ -1,4 +1,4 @@
-import cors from "cors";
+﻿import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import multer from "multer";
@@ -80,7 +80,7 @@ function detectMagicExtension(filePath: string): string | null {
   }
 }
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
   .split(",")
@@ -157,13 +157,13 @@ app.use((req, res, next) => {
 
 app.use(identityRateLimit(Number(process.env.ORG_RATE_LIMIT_PER_MINUTE ?? 180)));
 
-// ─── Health ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Health â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get("/v1/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString(), service: "vericheck-ai" });
 });
 
-// ─── Auth / API Keys ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Auth / API Keys â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const createKeySchema = z.object({
   org_id: z.string().min(1),
@@ -212,7 +212,7 @@ app.delete("/v1/auth/keys/:id", requireRole("super_admin", "org_admin"), (req, r
   return res.status(204).send();
 });
 
-// ─── Organisations ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Organisations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post("/v1/orgs", requireRole("super_admin"), (req, res) => {
   const { name } = req.body;
@@ -252,7 +252,7 @@ app.put(
   },
 );
 
-// ─── LTI 1.3 Integration ──────────────────────────────────────────────────────
+// â”€â”€â”€ LTI 1.3 Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get("/v1/lti/login", (req, res) => {
   const { iss, login_hint, target_link_uri, lti_message_hint, client_id, lti_deployment_id } = req.query;
@@ -284,33 +284,45 @@ app.get("/v1/lti/jwks", (req, res) => {
   res.json({ keys: [] }); // Stub for public keys if deep-linking or grade passback is needed
 });
 
-// ─── Humanizer ────────────────────────────────────────────────────────────────
-app.post("/v1/humanize", async (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: "Text is required" });
-
-  // Basic mock humanization function
-  // Replace formal wording with more casual or varied synonyms typically found in human text
-  let humanized = String(text)
-    .replace(/\b(Furthermore|Additionally|Moreover)\b/g, "Plus")
-    .replace(/\b(Therefore|Thus|Hence)\b/g, "So")
-    .replace(/\b(utilize|utilizing)\b/g, "use")
-    .replace(/\b(In conclusion|To summarize)\b/g, "Ultimately")
-    .replace(/\b(delve into)\b/g, "explore")
-    .replace(/\b(crucial|vital|imperative)\b/g, "important")
-    .replace(/\b(facilitate)\b/g, "help")
-    .replace(/\b(A myriad of)\b/g, "Many")
-    .replace(/\b(It is important to note that)\b/g, "Keep in mind that");
-
-  if (humanized.endsWith(".")) humanized += " "; // minor stylistic perturbation
-  
-  // Fake brief delay
-  await new Promise((r) => setTimeout(r, 600));
-
-  res.json({ original: text, humanized });
+// â”€â”€â”€ Writing Assist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const humanizeSchema = z.object({
+  text: z.string().min(5).max(4000),
 });
 
-// ─── Submissions ──────────────────────────────────────────────────────────────
+function humanizeForReadability(input: string): string {
+  let text = input.trim();
+  text = text
+    .replace(/\b(Furthermore|Moreover|Additionally)\b/gi, "Also")
+    .replace(/\b(Therefore|Thus|Hence)\b/gi, "So")
+    .replace(/\b(utilize|utilizing)\b/gi, "use")
+    .replace(/\b(in order to)\b/gi, "to")
+    .replace(/\b(it is important to note that)\b/gi, "Note that")
+    .replace(/\s{2,}/g, " ");
+
+  // Break very long sentences for readability.
+  if (text.length > 220) {
+    text = text.replace(/,\s+(which|that|because|while|although)\s+/gi, ". $1 ");
+  }
+
+  // Keep first character uppercase.
+  if (text.length > 1) {
+    text = text[0].toUpperCase() + text.slice(1);
+  }
+  return text;
+}
+
+app.post("/v1/writing-assist/humanize", (req, res) => {
+  const parsed = humanizeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const output = humanizeForReadability(parsed.data.text);
+  return res.json({
+    original: parsed.data.text,
+    rewritten: output,
+    mode: "readability",
+  });
+});
+
+// â”€â”€â”€ Submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post("/v1/submissions", uploadLimiter, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file is required" });
@@ -434,7 +446,7 @@ app.get("/v1/submissions/:jobId/report/pdf", (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename=report-${job.job_id}.pdf`);
   doc.pipe(res);
 
-  doc.fontSize(20).text("VeriCheck AI — Integrity Report", { underline: true });
+  doc.fontSize(20).text("VeriCheck AI â€” Integrity Report", { underline: true });
   doc.moveDown(0.5);
   doc.fontSize(11).fillColor("#555").text(`Generated: ${new Date().toUTCString()}`);
   doc.moveDown();
@@ -482,7 +494,7 @@ app.get("/v1/submissions/:jobId/report/pdf", (req, res) => {
   doc.end();
 });
 
-// ─── Bulk submissions ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Bulk submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post("/v1/submissions/bulk", uploadLimiter, upload.single("manifest"), (req, res) => {
   const orgId = req.auth.org_id;
@@ -529,7 +541,7 @@ app.post("/v1/submissions/bulk", uploadLimiter, upload.single("manifest"), (req,
   return res.status(202).json({ accepted_count: accepted.length, job_ids: accepted });
 });
 
-// ─── Organisation stats ───────────────────────────────────────────────────────
+// â”€â”€â”€ Organisation stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get("/v1/organisations/:orgId/stats", (req, res) => {
   if (req.params.orgId !== req.auth.org_id && req.auth.role !== "super_admin") {
@@ -555,7 +567,7 @@ app.get("/v1/organisations/:orgId/stats", (req, res) => {
   });
 });
 
-// ─── Corpus ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Corpus â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const corpusSchema = z.object({
   org_id: z.string().min(1),
@@ -589,7 +601,7 @@ app.get("/v1/corpus", requireRole("super_admin", "org_admin", "instructor"), (re
   return res.json(corpus);
 });
 
-// ─── Submission delete ────────────────────────────────────────────────────────
+// â”€â”€â”€ Submission delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.delete("/v1/submissions/:jobId", (req, res) => {
   const job = getJob(req.params.jobId);
@@ -602,7 +614,7 @@ app.delete("/v1/submissions/:jobId", (req, res) => {
   return res.status(204).send();
 });
 
-// ─── Audit log ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Audit log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get(
   "/v1/organisations/:orgId/audit",
@@ -616,7 +628,7 @@ app.get(
   },
 );
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 if (require.main === module) {
   startQueueWorker();

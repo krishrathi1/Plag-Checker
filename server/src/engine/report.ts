@@ -105,6 +105,47 @@ function buildRiskExplanation(
   return parts.join(" ");
 }
 
+function buildPlainLanguageSummary(
+  similarity: number,
+  aiProbability: number,
+  highSimCount: number,
+  highAICount: number,
+  totalSentences: number,
+): string {
+  return [
+    `We checked ${totalSentences} sentences.`,
+    `${highSimCount} sentences had strong source overlap.`,
+    `${highAICount} sentences looked highly machine-like.`,
+    `Overall similarity is ${(similarity * 100).toFixed(1)}% and AI likelihood is ${(aiProbability * 100).toFixed(1)}%.`,
+  ].join(" ");
+}
+
+function buildImprovementTips(
+  similarity: number,
+  aiProbability: number,
+  excludedCount: number,
+  obfuscationFlags: ObfuscationFlag[],
+): string[] {
+  const tips: string[] = [];
+  if (similarity >= 0.2) {
+    tips.push("Rewrite matched passages in your own words and add clear citations for borrowed ideas.");
+  }
+  if (aiProbability >= 0.5) {
+    tips.push("Add your own examples, personal reasoning, and topic-specific details to make authorship clearer.");
+    tips.push("Vary sentence length and structure naturally instead of repeating template transitions.");
+  }
+  if (excludedCount === 0) {
+    tips.push("Include proper in-text citations and a reference list where external claims are used.");
+  }
+  if (obfuscationFlags.length > 0) {
+    tips.push("Remove hidden characters or unusual symbols before submission and keep formatting clean.");
+  }
+  if (!tips.length) {
+    tips.push("Good result. Do a final proofreading pass for clarity, citations, and originality.");
+  }
+  return tips;
+}
+
 // ─── Paragraph segmentation ───────────────────────────────────────────────────
 
 function splitParagraphs(text: string): string[] {
@@ -167,6 +208,14 @@ export async function generateReport(input: ReportOptions): Promise<Report> {
       docx_meta: input.docxMeta,
       high_similarity_sentence_count: codeResult.score >= 0.4 ? 1 : 0,
       high_ai_sentence_count: aiResult.probability >= 0.7 ? 1 : 0,
+      plain_language_summary: buildPlainLanguageSummary(
+        codeResult.score,
+        aiResult.probability,
+        codeResult.score >= 0.4 ? 1 : 0,
+        aiResult.probability >= 0.7 ? 1 : 0,
+        1,
+      ),
+      improvement_tips: buildImprovementTips(codeResult.score, aiResult.probability, 0, obfuscationFlags),
       citation_excluded_count: 0,
       detection_method_breakdown: { exact: 0, semantic: 0, shingle: 0, embedding: 0 },
       overall_risk_explanation: buildRiskExplanation(
@@ -298,6 +347,19 @@ export async function generateReport(input: ReportOptions): Promise<Report> {
     docx_meta: input.docxMeta,
     high_similarity_sentence_count: highSimCount,
     high_ai_sentence_count: highAICount,
+    plain_language_summary: buildPlainLanguageSummary(
+      similarityScore,
+      aiProbability,
+      highSimCount,
+      highAICount,
+      rawSentences.length,
+    ),
+    improvement_tips: buildImprovementTips(
+      similarityScore,
+      aiProbability,
+      excludedCount,
+      obfuscationFlags,
+    ),
     ai_band: aiDoc.band,
     ai_reasons: aiDoc.reasons,
     ai_signal_breakdown: aiDoc.signals,

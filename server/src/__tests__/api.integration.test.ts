@@ -1,5 +1,11 @@
 import path from "path";
 import request from "supertest";
+
+jest.mock("../utils/embedding", () => ({
+  cosineSimilarity: () => 0,
+  getEmbedding: async () => [],
+}));
+
 import { app } from "../index";
 
 describe("api integration", () => {

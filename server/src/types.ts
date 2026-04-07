@@ -34,6 +34,8 @@ export interface ForensicSummary {
   docx_meta?: DocxMeta;
   high_similarity_sentence_count: number;
   high_ai_sentence_count: number;
+  plain_language_summary?: string;
+  improvement_tips?: string[];
   ai_band?: "LIKELY_HUMAN" | "UNCERTAIN" | "LIKELY_AI";
   ai_reasons?: string[];
   ai_signal_breakdown?: Record<string, number>;

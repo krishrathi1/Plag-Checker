@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type JobStatus = "queued" | "processing" | "complete" | "failed";
 type Role = "super_admin" | "org_admin" | "instructor" | "student";
@@ -67,6 +67,8 @@ interface ForensicSummary {
   docx_meta?: DocxMeta;
   high_similarity_sentence_count: number;
   high_ai_sentence_count: number;
+  plain_language_summary?: string;
+  improvement_tips?: string[];
   citation_excluded_count: number;
   detection_method_breakdown: { exact: number; semantic: number; shingle: number; embedding?: number };
   overall_risk_explanation: string;
@@ -123,7 +125,7 @@ interface OrgConfig {
   student_self_check_quota: number;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8080";
 
@@ -133,7 +135,7 @@ const RISK_COLOR: Record<RiskBand, string> = {
   HIGH: "#ef4444",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
@@ -149,7 +151,7 @@ function sentenceClass(s: SentenceReport): string {
   return "sent-clean";
 }
 
-// ─── API Client ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ API Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function makeHeaders(apiKey: string | null): Record<string, string> {
   const h: Record<string, string> = {};
@@ -166,7 +168,7 @@ async function apiGet<T>(path: string, apiKey: string | null): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Components ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScoreGauge({ value, label, color }: { value: number; label: string; color: string }) {
   const deg = Math.round(value * 180);
@@ -199,22 +201,43 @@ function RiskPill({ band }: { band: RiskBand }) {
   );
 }
 
-// ─── Forensic Panel ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Forensic Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SEV_COLOR: Record<string, string> = {
   HIGH: "#ef4444", WARN: "#f59e0b", MEDIUM: "#f59e0b", INFO: "#6366f1", LOW: "#94a3b8",
 };
 
 function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
-  const { obfuscation_flags, docx_meta, detection_method_breakdown, overall_risk_explanation } = forensic;
+  const {
+    obfuscation_flags,
+    docx_meta,
+    detection_method_breakdown,
+    overall_risk_explanation,
+    plain_language_summary,
+    improvement_tips,
+  } = forensic;
   const total = Object.values(detection_method_breakdown).reduce((a, b) => a + b, 0);
 
   return (
     <section className="card forensic-card">
-      <h3>🔬 Forensic Analysis</h3>
+      <h3>ðŸ”¬ Forensic Analysis</h3>
 
       {/* Risk explanation */}
       <div className="forensic-explanation">{overall_risk_explanation}</div>
+      {(plain_language_summary || (improvement_tips?.length ?? 0) > 0) && (
+        <div className="forensic-coaching">
+          {plain_language_summary && (
+            <p className="forensic-coaching-summary">{plain_language_summary}</p>
+          )}
+          {(improvement_tips?.length ?? 0) > 0 && (
+            <ul className="forensic-coaching-list">
+              {improvement_tips?.map((tip, i) => (
+                <li key={i}>{tip}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="forensic-grid">
         {/* Detection method breakdown */}
@@ -252,7 +275,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
       {/* Obfuscation flags */}
       {obfuscation_flags.length > 0 && (
         <div className="obf-section">
-          <p className="forensic-block-title">⚠ Obfuscation Detected</p>
+          <p className="forensic-block-title">âš  Obfuscation Detected</p>
           {obfuscation_flags.map((f, i) => (
             <div key={i} className="flag-row" style={{ borderLeftColor: SEV_COLOR[f.severity] }}>
               <span className="flag-sev" style={{ color: SEV_COLOR[f.severity] }}>{f.severity}</span>
@@ -265,7 +288,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
       {/* DOCX metadata */}
       {docx_meta && (
         <div className="docx-meta-section">
-          <p className="forensic-block-title">📄 Document Metadata (DOCX)</p>
+          <p className="forensic-block-title">ðŸ“„ Document Metadata (DOCX)</p>
           <div className="docx-meta-grid">
             {docx_meta.author && <div className="docx-row"><span>Author</span><strong>{docx_meta.author}</strong></div>}
             {docx_meta.lastModifiedBy && docx_meta.lastModifiedBy !== docx_meta.author && (
@@ -297,7 +320,7 @@ function ForensicPanel({ forensic }: { forensic: ForensicSummary }) {
   );
 }
 
-// ─── Paragraph Heatmap ────────────────────────────────────────────────────────
+// â”€â”€â”€ Paragraph Heatmap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ParagraphHeatmap({ paragraphs }: { paragraphs: ParagraphReport[] }) {
   if (!paragraphs.length) return null;
@@ -346,33 +369,40 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
   const [active, setActive] = useState<number | null>(null);
   const [humanizedText, setHumanizedText] = useState<string | null>(null);
   const [humanizing, setHumanizing] = useState(false);
-
-  const handleHumanize = async (text: string) => {
-    setHumanizing(true);
-    setHumanizedText(null);
-    try {
-      const res = await fetch(`${API_BASE}/v1/humanize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-      const data = await res.json();
-      if (res.ok) setHumanizedText(data.humanized);
-      else setHumanizedText("Failed to humanize text.");
-    } catch {
-      setHumanizedText("Failed to connect to humanizer.");
-    } finally {
-      setHumanizing(false);
-    }
-  };
+  const [humanizeError, setHumanizeError] = useState<string | null>(null);
 
   const handleSpanClick = (i: number) => {
     if (active === i) {
       setActive(null);
       setHumanizedText(null);
-    } else {
-      setActive(i);
-      setHumanizedText(null);
+      setHumanizeError(null);
+      return;
+    }
+    setActive(i);
+    setHumanizedText(null);
+    setHumanizeError(null);
+  };
+
+  const handleHumanize = async (text: string) => {
+    setHumanizing(true);
+    setHumanizeError(null);
+    setHumanizedText(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/writing-assist/humanize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const payload = (await res.json()) as { rewritten?: string; error?: string };
+      if (!res.ok || !payload.rewritten) {
+        setHumanizeError(payload.error ?? "Unable to humanize this sentence right now.");
+        return;
+      }
+      setHumanizedText(payload.rewritten);
+    } catch {
+      setHumanizeError("Unable to humanize this sentence right now.");
+    } finally {
+      setHumanizing(false);
     }
   };
 
@@ -397,16 +427,22 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
                   📄 <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> ({src.match_percentage.toFixed(1)}%)
                 </span>
               ))}
-              
-              {s.ai_probability > 0.4 && (
-                <div className="humanize-section">
-                  <hr style={{ borderColor: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-                  <button onClick={(e) => { e.stopPropagation(); handleHumanize(s.text); }} disabled={humanizing} className="btn-humanize">
-                    {humanizing ? "✨ Rewriting..." : "✨ Make AI-Free"}
+              {!s.is_citation && (
+                <div className="sent-humanize-box">
+                  <button
+                    className="sent-humanize-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleHumanize(s.text);
+                    }}
+                    disabled={humanizing}
+                  >
+                    {humanizing ? "Humanizing..." : "Humanize Tone"}
                   </button>
+                  {humanizeError && <p className="sent-humanize-error">{humanizeError}</p>}
                   {humanizedText && (
-                    <div className="humanized-result">
-                      <strong>Suggestion:</strong>
+                    <div className="sent-humanized-result">
+                      <strong>Humanized:</strong>
                       <p>{humanizedText}</p>
                     </div>
                   )}
@@ -419,7 +455,6 @@ function SentenceHighlighter({ sentences }: { sentences: SentenceReport[] }) {
     </div>
   );
 }
-
 function SideBySideView({ sentences, sources }: { sentences: SentenceReport[]; sources: SourceMatch[] }) {
   const topSource = sources[0];
   return (
@@ -455,7 +490,7 @@ function SideBySideView({ sentences, sources }: { sentences: SentenceReport[]; s
                   </div>
                   <div className="source-card-meta">
                     Match: <strong>{src.match_percentage.toFixed(2)}%</strong>
-                    &nbsp;·&nbsp;Accessed: {src.access_date}
+                    &nbsp;Â·&nbsp;Accessed: {src.access_date}
                   </div>
                   <div className="source-card-url">{src.url}</div>
                 </div>
@@ -470,7 +505,7 @@ function SideBySideView({ sentences, sources }: { sentences: SentenceReport[]; s
   );
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function App() {
   // Auth
@@ -504,7 +539,7 @@ export default function App() {
 
   const effectiveKey = apiKey; // null = dev mode (no auth required)
 
-  // ── Polling ──────────────────────────────────────────────────────────────
+  // â”€â”€ Polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   useEffect(() => {
     if (!jobId || !status || status === "complete" || status === "failed") return;
@@ -530,7 +565,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, [jobId, status, effectiveKey]);
 
-  // ── Fetches ───────────────────────────────────────────────────────────────
+  // â”€â”€ Fetches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const fetchStats = useCallback(async () => {
     try {
@@ -555,7 +590,7 @@ export default function App() {
     } catch { /* ignore */ }
   }, [effectiveKey]);
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async function handleConnect() {
     setAuthError("");
@@ -570,7 +605,7 @@ export default function App() {
     }
   }
 
-  // ── Submission ────────────────────────────────────────────────────────────
+  // â”€â”€ Submission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async function submitFile(e: React.FormEvent) {
     e.preventDefault();
@@ -606,7 +641,7 @@ export default function App() {
     }
   }
 
-  // ── Drag-and-drop ─────────────────────────────────────────────────────────
+  // â”€â”€ Drag-and-drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function onDrop(ev: React.DragEvent) {
     ev.preventDefault();
@@ -615,7 +650,7 @@ export default function App() {
     if (f) setFile(f);
   }
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const riskColor = useMemo(
     () => (report ? RISK_COLOR[report.risk_band] : "transparent"),
@@ -623,20 +658,20 @@ export default function App() {
   );
 
   const statusEmoji: Record<JobStatus, string> = {
-    queued: "⏳",
-    processing: "⚙️",
-    complete: "✅",
-    failed: "❌",
+    queued: "â³",
+    processing: "âš™ï¸",
+    complete: "âœ…",
+    failed: "âŒ",
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="app-root">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <span className="brand-icon">🔍</span>
+          <span className="brand-icon">ðŸ”</span>
           <span className="brand-name">VeriCheck<em>AI</em></span>
         </div>
 
@@ -713,7 +748,7 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ── Main area ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Main area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <main className="main-area">
         {/* Upload card */}
         <section className="card upload-card">
@@ -728,15 +763,15 @@ export default function App() {
             >
               {file ? (
                 <>
-                  <span className="drop-icon">📄</span>
+                  <span className="drop-icon">ðŸ“„</span>
                   <span className="drop-filename">{file.name}</span>
                   <span className="drop-hint">Click or drop to replace</span>
                 </>
               ) : (
                 <>
-                  <span className="drop-icon">📂</span>
+                  <span className="drop-icon">ðŸ“‚</span>
                   <span className="drop-hint">Drop a file here or click to browse</span>
-                  <span className="drop-types">PDF · DOCX · PPTX · TXT · TEX · MD · code files</span>
+                  <span className="drop-types">PDF Â· DOCX Â· PPTX Â· TXT Â· TEX Â· MD Â· code files</span>
                 </>
               )}
               <input
@@ -759,7 +794,7 @@ export default function App() {
             </div>
 
             <button className="btn-primary" type="submit" disabled={loading || !file}>
-              {loading ? "Submitting…" : "Submit for Scan"}
+              {loading ? "Submittingâ€¦" : "Submit for Scan"}
             </button>
           </form>
 
@@ -787,11 +822,11 @@ export default function App() {
                   )}
                 </h2>
                 <div className="score-meta">
-                  {report.metadata.word_count.toLocaleString()} words ·{" "}
-                  lang: <strong>{report.metadata.language}</strong> ·{" "}
-                  processed in <strong>{report.metadata.processing_time_ms}ms</strong> ·{" "}
+                  {report.metadata.word_count.toLocaleString()} words Â·{" "}
+                  lang: <strong>{report.metadata.language}</strong> Â·{" "}
+                  processed in <strong>{report.metadata.processing_time_ms}ms</strong> Â·{" "}
                   {report.metadata.citations_excluded > 0 && (
-                    <span>{report.metadata.citations_excluded} citation(s) excluded · </span>
+                    <span>{report.metadata.citations_excluded} citation(s) excluded Â· </span>
                   )}
                   {report.metadata.is_code_file && <span className="code-badge">CODE FILE</span>}
                 </div>
@@ -835,14 +870,14 @@ export default function App() {
                       <tr key={h.job_id} className={h.job_id === report.job_id ? "history-active" : ""}>
                         <td>v{h.scan_version}</td>
                         <td>{new Date(h.created_at).toLocaleDateString()}</td>
-                        <td>{h.similarity_score != null ? pct(h.similarity_score) : "—"}</td>
-                        <td>{h.ai_probability != null ? pct(h.ai_probability) : "—"}</td>
+                        <td>{h.similarity_score != null ? pct(h.similarity_score) : "â€”"}</td>
+                        <td>{h.ai_probability != null ? pct(h.ai_probability) : "â€”"}</td>
                         <td>
                           {h.risk_band ? (
                             <span style={{ color: RISK_COLOR[h.risk_band] }}>{h.risk_band}</span>
-                          ) : "—"}
+                          ) : "â€”"}
                         </td>
-                        <td><code>{h.job_id.slice(0, 8)}…</code></td>
+                        <td><code>{h.job_id.slice(0, 8)}â€¦</code></td>
                       </tr>
                     ))}
                   </tbody>
@@ -900,23 +935,23 @@ export default function App() {
                           <td>{pct(s.similarity_score)}</td>
                           <td>{pct(s.ai_probability)}</td>
                           <td>
-                            {pct(s.confidence_interval[0])}–{pct(s.confidence_interval[1])}
+                            {pct(s.confidence_interval[0])}â€“{pct(s.confidence_interval[1])}
                           </td>
                           <td>
                             {s.detection_method && s.detection_method !== "none" ? (
                               <span className={`method-chip method-chip-${s.detection_method}`}>
                                 {s.detection_method}
                               </span>
-                            ) : "—"}
+                            ) : "â€”"}
                           </td>
-                          <td>{s.is_citation ? "✓" : ""}</td>
+                          <td>{s.is_citation ? "âœ“" : ""}</td>
                           {viewRole !== "student" && (
                             <td>
                               {s.sources[0] ? (
                                 <a href={s.sources[0].url} target="_blank" rel="noreferrer">
                                   {s.sources[0].title}
                                 </a>
-                              ) : "—"}
+                              ) : "â€”"}
                             </td>
                           )}
                         </tr>
@@ -927,7 +962,7 @@ export default function App() {
               )}
             </section>
 
-            {/* Sources list — only for non-student or if reveal enabled */}
+            {/* Sources list â€” only for non-student or if reveal enabled */}
             {(viewRole !== "student" || orgConfig?.student_source_reveal) && report.sources.length > 0 && (
               <section className="card sources-card">
                 <h3>Source Attribution ({report.sources.length})</h3>
@@ -944,7 +979,7 @@ export default function App() {
                         />
                       </div>
                       <div className="source-card-meta">
-                        {src.match_percentage.toFixed(2)}% match · {src.access_date}
+                        {src.match_percentage.toFixed(2)}% match Â· {src.access_date}
                       </div>
                     </div>
                   ))}
@@ -957,3 +992,4 @@ export default function App() {
     </div>
   );
 }
+
